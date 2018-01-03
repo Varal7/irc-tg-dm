@@ -9,6 +9,9 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "node-telegram-bot-api": "^0.30.0"
+    "irc-framework": "^2.10.2",
+    "node-telegram-bot-api": "^0.30.0",
+    "tgfancy": "^0.13.0",
+    "winston": "^2.4.0"
   }
 }
