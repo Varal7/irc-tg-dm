@@ -1,6 +1,8 @@
 var NodeIrc = require('irc-framework');
 var logger = require('winston');
+var conv = require('../chatid.json');
 
+const owner = "Varal7";
 
 
 var init = function(msgCallback) {
@@ -14,58 +16,38 @@ var init = function(msgCallback) {
 
 
 
-
     bot.on('message', function(event) {
             var user = event.nick;
             var text = event.message;
-
-            if (event.message.indexOf('hello') === 0) {
-                    event.reply('Hi!');
+            
+            logger.debug('got irc msg :', text);
+            if (user !== owner) {
+                return;
             }
-            console.log(text) //TODO remove
-            logger.debug('got irc msg:', text);
+            
+            var splits = text.split(" ");
+            var nick = splits.shift();
+            var text = splits.join(" ");
+            var chatid = conv.nick2chatid[nick];
 
+            if (chatid === undefined) {
+                bot.say(owner, "Nick " + nick + " not found");
+                return;
+            }
+            
             msgCallback({
-                protocol: 'irc',
-                //channel: message.channel,
-                user: user,
+                protocol: 'tg',
+                chatid: chatid,
                 text: text
             });
             
     });
  return {
         send: function(message, multi) {
-            //TODO
             logger.verbose('<< relaying to IRC:', message.text);
-            console.log(message.text) //TODO remove
-            return;
-
-            
-
-            if (multi) {
-                logger.verbose('<< relaying to IRC w/ multiple lines:', message.text);
-                message.text.split('\n').forEach(function(msg) {
-                    nodeIrc.say(message.channel.ircChan, msg);
-                });
-                return;
-            }
-
-            // strip empty lines
-            message.text = message.text.replace(/^\s*\n/gm, '');
-
-            // replace newlines
-            message.text = message.text.replace(/\n/g, config.replaceNewlines);
-
-            // TODO: replace here any remaining newlines with username
-            // (this can happen if user configured replaceNewlines to itself
-            // contain newlines)
-
-            logger.verbose('<< relaying to IRC:', message.text);
-            nodeIrc.say(message.channel.ircChan, message.text);
+            bot.say(owner, message.text);
         },
     };
 };
-
-
 
 module.exports = init;

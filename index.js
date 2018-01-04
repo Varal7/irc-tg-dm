@@ -1,13 +1,26 @@
 var logger = require('./log');
+var fs = require('fs');
 
-logger.level = 5;
+logger.level = "verbose";
+
+if (!fs.existsSync('chatid.json')) {
+    conv = {'nick2chatid': {}, 'chatid2nick': {}};
+    json = JSON.stringify(conv);
+    try {
+        fs.writeFileSync('chatid.json', json);
+        logger.info('Created chatid.json');
+    } catch (e) {
+        logger.error('Error while creating chatid.json: ', e)
+    }
+}
+
 
 var msgCallback = function(message) {
     switch (message.protocol) {
-        case 'irc':
+        case 'tg':
             tg.send(message);
             break;
-        case 'tg':
+        case 'irc':
             irc.send(message);
             break;
         default:
