@@ -34,9 +34,9 @@ var init = function(msgCallback) {
         logger.debug('got tg msg:', msg);
 
         var chatid = msg.chat.id;
-        try {
-            var nick = conv.chatid2nick[chatid];
-        } catch (e) { 
+        var nick = conv.chatid2nick[chatid];
+
+        if (nick === undefined) {
             tg.sendMessage(chatid, "Please set your nickname with me using /nick [nickname]");
             return;
         }
