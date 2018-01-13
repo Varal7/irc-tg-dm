@@ -1,19 +1,8 @@
 var logger = require('./log');
 var fs = require('fs');
+var config = require('./config');
 
-logger.level = "verbose";
-
-if (!fs.existsSync('chatid.json')) {
-    conv = {'nick2chatid': {}, 'chatid2nick': {}};
-    json = JSON.stringify(conv);
-    try {
-        fs.writeFileSync('chatid.json', json);
-        logger.info('Created chatid.json');
-    } catch (e) {
-        logger.error('Error while creating chatid.json: ', e)
-    }
-}
-
+logger.level = config.logLevel;
 
 var msgCallback = function(message) {
     switch (message.protocol) {

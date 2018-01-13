@@ -1,59 +1,58 @@
 var Telegram = require('node-telegram-bot-api');
 var logger = require('winston');
-var conv = require('../chatid.json');
 var fs = require('fs');
+var utils = require('./utils');
+var config = require('../config');
 
-const token = '481561599:AAGDjtpWfPOMnsXCEDN3X8Fy_UcNPXH3tbY';
-    
 
 var init = function(msgCallback) {
-    var tg = new Telegram(token, {
-        polling: true,
-        emojification: true,
+    var bots = [];
+    config.tgbots.forEach(function(botConfig) {
+        var bot = new Telegram(botConfig.token, {
+            polling: true,
+            emojification: true,
+        });
+        bots.push({
+            bot: bot,
+            nick: botConfig.nick,
+        });
     });
 
+    bots.forEach(function(bot) {
 
-    tg.onText(/\/nick (.+)/, (msg, match) => {
-	var chatId = msg.chat.id;
-	var nick = match[1].split(" ", 2)[0]; 
+        bot.bot.on('message', function(msg) {
+            var chatId = msg.chat.id;
+            var text = msg.text
 
-	conv.nick2chatid[nick] = chatId;
-	conv.chatid2nick[chatId] = nick;
-	var json = JSON.stringify(conv);
-        try {
-            fs.writeFileSync('chatid.json', json);
-            logger.info('successfully stored new nick');
-            tg.sendMessage(chatid, "Ok, new nick: " + nick);
-        } catch (e) {
-            logger.error('error while storing nick:', e);
-        }
-    }); 
+            logger.debug('got tg msg from ' + chatId + ': ' + text);
 
+            var ircbot = utils.lookUpIrcBot(chatId, config.ircbots);
+            if (!ircbot) {
+                logger.debug('User not in config');
+                bot.bot.sendMessage(chatId, "You are not allowed to talk to me, chatId: " + chatId);
+                return;
+            }
 
-    tg.on('message', function(msg) {
-        logger.debug('got tg msg:', msg);
-
-        var chatid = msg.chat.id;
-        var nick = conv.chatid2nick[chatid];
-
-        if (nick === undefined) {
-            tg.sendMessage(chatid, "Please set your nickname with me using /nick [nickname]");
-            return;
-        }
-
-        text = '<' + nick + '> ' + msg.text;
-
-        msgCallback({
-            protocol: 'irc',
-            text: text,
+            msgCallback({
+                protocol: 'irc',
+                to: bot.nick,
+                from: chatId,
+                text: text
+            });
         });
     });
 
 
     return {
         send: function(message) {
-            logger.verbose('>> relaying to TG:', message.text);
-            tg.sendMessage(message.chatid, message.text);
+            var bot = utils.lookUpTgBot(message.from, bots);
+            if (!bot) {
+                logger.error('TG Bot not in config');
+                return;
+            }
+            logger.verbose('>> ' +  message.from  + '->'  + message.to 
+                + ': ' +  message.text);
+            bot.bot.sendMessage(message.to, message.text);
         }
     };
 };

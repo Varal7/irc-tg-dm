@@ -1,51 +1,59 @@
 var NodeIrc = require('irc-framework');
 var logger = require('winston');
-var conv = require('../chatid.json');
-
-const owner = "Varal7";
+var config = require('../config');
+var utils = require('./utils');
 
 
 var init = function(msgCallback) {
-
-    var bot = new NodeIrc.Client();
-    bot.connect({
-            host: 'irc.rezosup.org',
-            port: 6667,
-            nick: 'TisanePrivateBot'
+    var bots = [];
+    config.ircbots.forEach(function(botConfig) {
+        var bot = new NodeIrc.Client();
+        bot.connect({
+            host: config.ircServer,
+            nick: botConfig.nick,
+            port: config.ircOptions.port,
+            gecos: config.ircOptions.realName
+        });
+        logger.info('Conneting as ', botConfig.nick);
+        bots.push({
+            chatId: botConfig.chatId,
+            bot: bot
+        });
     });
 
+    bots.forEach(function(bot) {
 
+        bot.bot.on('message', function(event) {
+                var nick = event.nick;
+                var text = event.message;
 
-    bot.on('message', function(event) {
-            var user = event.nick;
-            var text = event.message;
-            
-            logger.debug('got irc msg :', text);
-            if (user !== owner) {
-                return;
-            }
-            
-            var splits = text.split(" ");
-            var nick = splits.shift();
-            var text = splits.join(" ");
-            var chatid = conv.nick2chatid[nick];
+                logger.debug('got irc msg from ' + nick + ': ' + text);
 
-            if (chatid === undefined) {
-                bot.say(owner, "Nick " + nick + " not found");
-                return;
-            }
-            
-            msgCallback({
-                protocol: 'tg',
-                chatid: chatid,
-                text: text
-            });
-            
+                var tgbot = utils.lookUpTgBot(nick, config.tgbots);
+                if (!tgbot) {
+                    logger.debug('User not in config');
+                    return;
+                }
+
+                msgCallback({
+                    protocol: 'tg',
+                    to: bot.chatId,
+                    from: nick,
+                    text: text
+                });
+        });
+
     });
  return {
-        send: function(message, multi) {
-            logger.verbose('<< relaying to IRC:', message.text);
-            bot.say(owner, message.text);
+        send: function(message) {
+            var bot = utils.lookUpIrcBot(message.from, bots);
+            if (!bot) {
+                logger.error('IRC Bot not in config');
+                return;
+            }
+            logger.verbose('<< ' +  message.from  + '->'  + message.to
+                + ': ' +  message.text);
+            bot.bot.say(message.to, message.text);
         },
     };
 };
