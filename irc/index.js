@@ -51,6 +51,12 @@ var init = function(msgCallback) {
                 logger.error('IRC Bot not in config');
                 return;
             }
+            // strip empty lines
+            message.text = message.text.replace(/^\s*\n/gm, '');
+
+            // replace newlines
+            message.text = message.text.replace(/\n/g, ' … ');
+
             logger.verbose('<< ' +  message.from  + '->'  + message.to
                 + ': ' +  message.text);
             bot.bot.say(message.to, message.text);
